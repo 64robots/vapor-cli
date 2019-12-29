@@ -26,7 +26,7 @@ class CollectSecrets
             return [$secret['name'] => $secret['version']];
         })->toArray();
 
-        $this->files->put(
+        $this->files->replace(
             $this->appPath.'/vaporSecrets.php',
             '<?php return '.var_export($secrets, true).';'
         );

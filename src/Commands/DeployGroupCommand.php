@@ -2,22 +2,17 @@
 
 namespace Laravel\VaporCli\Commands;
 
-use Laravel\VaporCli\Git;
 use Laravel\VaporCli\Path;
-use Illuminate\Support\Str;
 use Laravel\VaporCli\Helpers;
-use Illuminate\Support\Carbon;
 use Laravel\VaporCli\Manifest;
-use Laravel\VaporCli\Clipboard;
-use Laravel\VaporCli\ServeAssets;
 use Illuminate\Filesystem\Filesystem;
-use Laravel\VaporCli\Aws\AwsStorageProvider;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
 class DeployGroupCommand extends Command
 {
     use DisplaysDeploymentProgress;
+
+    protected $noRebuild = false;
 
     /**
      * Configure the command options.
@@ -43,12 +38,18 @@ class DeployGroupCommand extends Command
 
         collect(Manifest::getEnvironmentsByGroup($this->argument('group')))
             ->each(fn($environment) => $this->deployEnvironment($environment));
+        
+        // (new Filesystem)->deleteDirectory(Path::vapor());
     }
 
     protected function deployEnvironment(string $environment)
     {
         $this->call('deploy', [
             'environment' => $environment,
+            '--no-rebuild' => $this->noRebuild,
+            '--group' => true,
         ]);
+
+        $this->noRebuild = true;
     }
 }

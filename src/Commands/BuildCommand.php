@@ -36,6 +36,7 @@ class BuildCommand extends Command
             ->setName('build')
             ->addArgument('environment', InputArgument::OPTIONAL, 'The environment name', 'staging')
             ->addOption('asset-url', null, InputOption::VALUE_OPTIONAL, 'The asset base URL')
+            ->addOption('no-rebuild', null, InputOption::VALUE_OPTIONAL, 'Don\'t do a full rebuild (used for groups)', false) 
             ->setDescription('Build the project archive');
     }
 
@@ -48,32 +49,40 @@ class BuildCommand extends Command
     {
         Helpers::ensure_api_token_is_available();
 
-        Helpers::line("Building project for environment {$this->argument('environment')}...");
+        Helpers::line('Building project for environment '.$this->argument('environment').'...');
 
         $startedAt = new DateTime;
-
-        collect([
-            new CopyApplicationToBuildPath,
-            new HarmonizeConfigurationFiles,
-            new SetBuildEnvironment($this->argument('environment'), $this->option('asset-url')),
-            new ExecuteBuildCommands($this->argument('environment')),
-            new ConfigureArtisan,
-            new ConfigureComposerAutoloader,
-            new RemoveIgnoredFiles,
-            new ProcessAssets($this->option('asset-url')),
-            new ExtractAssetsToSeparateDirectory,
-            new InjectHandlers,
-            new CollectSecrets($this->argument('environment')),
-            new InjectErrorPages,
-            new InjectRdsCertificate,
-            new ExtractVendorToSeparateDirectory,
-            new CompressApplication,
-            new CompressVendor,
-        ])->each->__invoke();
+        collect($this->getBuildCommands())->each->__invoke();
 
         $time = (new DateTime)->diff($startedAt)->format('%im%Ss');
 
         Helpers::line();
         Helpers::line('<info>Project built successfully.</info> ('.$time.')');
+    }
+
+    protected function getBuildCommands()
+    {
+        $commands = $this->option('no-rebuild') ? [] :
+            [
+                new CopyApplicationToBuildPath,
+                new HarmonizeConfigurationFiles,
+                new SetBuildEnvironment($this->argument('environment'), $this->option('asset-url')),
+                new ExecuteBuildCommands($this->argument('environment')),
+                new ConfigureArtisan,
+                new ConfigureComposerAutoloader,
+                new RemoveIgnoredFiles,
+                new ProcessAssets($this->option('asset-url')),
+                new ExtractAssetsToSeparateDirectory,
+                new InjectHandlers,
+                new InjectErrorPages,
+                new InjectRdsCertificate,
+            ];
+
+        return array_merge($commands, [
+            new CollectSecrets($this->argument('environment')),
+            new ExtractVendorToSeparateDirectory,
+            new CompressApplication,
+            new CompressVendor,
+        ]);
     }
 }

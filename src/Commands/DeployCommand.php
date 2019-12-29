@@ -32,6 +32,8 @@ class DeployCommand extends Command
             ->addOption('commit', null, InputOption::VALUE_OPTIONAL, 'The commit hash that is being deployed')
             ->addOption('message', null, InputOption::VALUE_OPTIONAL, 'The message for the commit that is being deployed')
             ->addOption('without-waiting', null, InputOption::VALUE_NONE, 'Deploy without waiting for progress')
+            ->addOption('no-rebuild', null, InputOption::VALUE_OPTIONAL, 'Don\'t do a full rebuild (used for groups)', false)
+            ->addOption('group', null, InputOption::VALUE_OPTIONAL, 'Group deployment', false)
             ->setDescription('Deploy an environment');
     }
 
@@ -53,7 +55,9 @@ class DeployCommand extends Command
             $this->vapor->project(Manifest::id())
         ));
 
-        (new Filesystem)->deleteDirectory(Path::vapor());
+        if (!$this->option('group')) {
+            (new Filesystem)->deleteDirectory(Path::vapor());
+        }
 
         $deployment = $this->handleCancellations($this->vapor->deploy(
             $artifact['id'], Manifest::current()
@@ -98,6 +102,7 @@ class DeployCommand extends Command
 
         $this->call('build', [
             'environment' => $this->argument('environment'),
+            '--no-rebuild' => $this->option('no-rebuild'),
             '--asset-url' => $this->assetDomain($project).'/'.$uuid,
         ]);
 
