@@ -36,10 +36,10 @@ class DeployGroupCommand extends Command
     {
         Helpers::ensure_api_token_is_available();
 
-        collect(Manifest::getEnvironmentsByGroup($this->argument('group')))
+        Manifest::getEnvironmentsByGroup($this->argument('group'))
             ->each(fn($environment) => $this->deployEnvironment($environment));
         
-        // (new Filesystem)->deleteDirectory(Path::vapor());
+        (new Filesystem)->deleteDirectory(Path::vapor());
     }
 
     protected function deployEnvironment(string $environment)
