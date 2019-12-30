@@ -16,6 +16,7 @@ use Laravel\VaporCli\BuildProcess\RemoveIgnoredFiles;
 use Laravel\VaporCli\BuildProcess\CompressApplication;
 use Laravel\VaporCli\BuildProcess\SetBuildEnvironment;
 use Laravel\VaporCli\BuildProcess\ExecuteBuildCommands;
+use Laravel\VaporCli\BuildProcess\ExecuteGroupBuildCommands;
 use Laravel\VaporCli\BuildProcess\InjectRdsCertificate;
 use Laravel\VaporCli\BuildProcess\CopyApplicationToBuildPath;
 use Laravel\VaporCli\BuildProcess\ConfigureComposerAutoloader;
@@ -37,6 +38,7 @@ class BuildCommand extends Command
             ->addArgument('environment', InputArgument::OPTIONAL, 'The environment name', 'staging')
             ->addOption('asset-url', null, InputOption::VALUE_OPTIONAL, 'The asset base URL')
             ->addOption('no-rebuild', null, InputOption::VALUE_OPTIONAL, 'Don\'t do a full rebuild (used for groups)', false) 
+            ->addOption('group', null, InputOption::VALUE_OPTIONAL, 'Group deployment', false)
             ->setDescription('Build the project archive');
     }
 
@@ -50,7 +52,7 @@ class BuildCommand extends Command
         Helpers::ensure_api_token_is_available();
 
         Helpers::line('Building project for environment '.$this->argument('environment').'...');
-
+  
         $startedAt = new DateTime;
         collect($this->getBuildCommands())->each->__invoke();
 
@@ -67,7 +69,9 @@ class BuildCommand extends Command
                 new CopyApplicationToBuildPath,
                 new HarmonizeConfigurationFiles,
                 new SetBuildEnvironment($this->argument('environment'), $this->option('asset-url')),
-                new ExecuteBuildCommands($this->argument('environment')),
+                $this->option('group') ?
+                    new ExecuteGroupBuildCommands($this->option('group')) :
+                    new ExecuteBuildCommands($this->argument('environment')),
                 new ConfigureArtisan,
                 new ConfigureComposerAutoloader,
                 new RemoveIgnoredFiles,

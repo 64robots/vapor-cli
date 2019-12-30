@@ -103,6 +103,7 @@ class DeployCommand extends Command
         $this->call('build', [
             'environment' => $this->argument('environment'),
             '--no-rebuild' => $this->option('no-rebuild'),
+            '--group' => $this->option('group'),
             '--asset-url' => $this->assetDomain($project).'/'.$uuid,
         ]);
 

@@ -36,7 +36,7 @@ class DeployGroupCommand extends Command
     {
         Helpers::ensure_api_token_is_available();
 
-        Manifest::getEnvironmentsByGroup($this->argument('group'))
+        Manifest::environmentsForGroup($this->argument('group'))
             ->each(fn($environment) => $this->deployEnvironment($environment));
         
         (new Filesystem)->deleteDirectory(Path::vapor());
@@ -47,7 +47,7 @@ class DeployGroupCommand extends Command
         $this->call('deploy', [
             'environment' => $environment,
             '--no-rebuild' => $this->noRebuild,
-            '--group' => true,
+            '--group' => $this->argument('group'),
         ]);
 
         $this->noRebuild = true;
