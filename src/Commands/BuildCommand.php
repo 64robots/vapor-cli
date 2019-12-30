@@ -16,6 +16,7 @@ use Laravel\VaporCli\BuildProcess\RemoveIgnoredFiles;
 use Laravel\VaporCli\BuildProcess\CompressApplication;
 use Laravel\VaporCli\BuildProcess\SetBuildEnvironment;
 use Laravel\VaporCli\BuildProcess\ExecuteBuildCommands;
+use Laravel\VaporCli\BuildProcess\ExecuteGroupBuildCommands;
 use Laravel\VaporCli\BuildProcess\InjectRdsCertificate;
 use Laravel\VaporCli\BuildProcess\CopyApplicationToBuildPath;
 use Laravel\VaporCli\BuildProcess\ConfigureComposerAutoloader;
@@ -36,6 +37,8 @@ class BuildCommand extends Command
             ->setName('build')
             ->addArgument('environment', InputArgument::OPTIONAL, 'The environment name', 'staging')
             ->addOption('asset-url', null, InputOption::VALUE_OPTIONAL, 'The asset base URL')
+            ->addOption('no-rebuild', null, InputOption::VALUE_OPTIONAL, 'Don\'t do a full rebuild (used for groups)', false) 
+            ->addOption('group', null, InputOption::VALUE_OPTIONAL, 'Group deployment', false)
             ->setDescription('Build the project archive');
     }
 
@@ -48,32 +51,42 @@ class BuildCommand extends Command
     {
         Helpers::ensure_api_token_is_available();
 
-        Helpers::line('Building project...');
-
+        Helpers::line('Building project for environment '.$this->argument('environment').'...');
+  
         $startedAt = new DateTime;
-
-        collect([
-            new CopyApplicationToBuildPath,
-            new HarmonizeConfigurationFiles,
-            new SetBuildEnvironment($this->argument('environment'), $this->option('asset-url')),
-            new ExecuteBuildCommands($this->argument('environment')),
-            new ConfigureArtisan,
-            new ConfigureComposerAutoloader,
-            new RemoveIgnoredFiles,
-            new ProcessAssets($this->option('asset-url')),
-            new ExtractAssetsToSeparateDirectory,
-            new InjectHandlers,
-            new CollectSecrets($this->argument('environment')),
-            new InjectErrorPages,
-            new InjectRdsCertificate,
-            new ExtractVendorToSeparateDirectory,
-            new CompressApplication,
-            new CompressVendor,
-        ])->each->__invoke();
+        collect($this->getBuildCommands())->each->__invoke();
 
         $time = (new DateTime)->diff($startedAt)->format('%im%Ss');
 
         Helpers::line();
         Helpers::line('<info>Project built successfully.</info> ('.$time.')');
+    }
+
+    protected function getBuildCommands()
+    {
+        $commands = $this->option('no-rebuild') ? [] :
+            [
+                new CopyApplicationToBuildPath,
+                new HarmonizeConfigurationFiles,
+                new SetBuildEnvironment($this->argument('environment'), $this->option('asset-url')),
+                $this->option('group') ?
+                    new ExecuteGroupBuildCommands($this->option('group')) :
+                    new ExecuteBuildCommands($this->argument('environment')),
+                new ConfigureArtisan,
+                new ConfigureComposerAutoloader,
+                new RemoveIgnoredFiles,
+                new ProcessAssets($this->option('asset-url')),
+                new ExtractAssetsToSeparateDirectory,
+                new InjectHandlers,
+                new InjectErrorPages,
+                new InjectRdsCertificate,
+            ];
+
+        return array_merge($commands, [
+            new CollectSecrets($this->argument('environment')),
+            new ExtractVendorToSeparateDirectory,
+            new CompressApplication,
+            new CompressVendor,
+        ]);
     }
 }

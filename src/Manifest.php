@@ -17,6 +17,18 @@ class Manifest
     }
 
     /**
+     * Retrieve environment's with a matching group
+     *
+     * @return array
+     */
+    public static function environmentsForGroup(string $group)
+    {
+        return collect(static::current()['environments'])
+            ->filter(fn($environment) => isset($environment['group']) && $environment['group'] === $group)
+            ->keys();
+    }
+
+    /**
      * Retrieve the manifest for the current working directory.
      *
      * @return array
@@ -43,6 +55,21 @@ class Manifest
         }
 
         return static::current()['environments'][$environment]['build'] ?? [];
+    }
+
+    /**
+     * Get the build commands for the given group.
+     *
+     * @param  string  $group
+     * @return array
+     */
+    public static function groupBuildCommands($group)
+    {
+        if (! isset(static::current()['groups'][$group])) {
+            Helpers::abort("The [{$group}] group has not been defined.");
+        }
+
+        return static::current()['groups'][$group]['build'] ?? [];
     }
 
     /**
